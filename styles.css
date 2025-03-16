@@ -66,6 +66,7 @@ body {
   left: calc(50% - 50px);
   transform: translateY(-50%);
 }
+
 .player-container {
   bottom: 80px;
   left: calc(50% - 50px);
@@ -84,6 +85,7 @@ body {
 .ai.character {
   background-color: #2196f3;
 }
+
 .player.character {
   background-color: #f44336;
 }
@@ -109,6 +111,7 @@ body {
 .hp {
   background-color: #f44336;
 }
+
 .mp {
   background-color: #2196f3;
 }
@@ -158,49 +161,53 @@ body {
   display: none;
 }
 
-.card.active-skill {
-  transform: scale(1.1);
-  background-color: #ffd700;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
-}
-
-.result-display {
-  transition: opacity 0.5s ease;
-}
-
-.character {
-  transition: all 0.5s ease;
-}
-
 /* 劈砍动画 */
 .character.attack-slash {
-    animation: slash 0.3s ease;
+  animation: slash 0.3s ease;
 }
 
 @keyframes slash {
-    0% { transform: rotate(0deg); }
-    50% { transform: rotate(15deg); }
-    100% { transform: rotate(0deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(15deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 /* 前冲动画 */
 .character.dash-forward {
-    animation: dash 0.5s ease;
+  animation: dash 0.5s ease;
 }
 
 @keyframes dash {
-    0% { transform: translateX(0); }
-    50% { transform: translateX(20px); }
-    100% { transform: translateX(0); }
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(20px);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 
 /* 防守动画 */
 .character.defend {
-    animation: defend 0.5s ease;
+  animation: defend 0.5s ease;
 }
 
 @keyframes defend {
-    0% { transform: scale(1); }
-    50% { transform: scale(0.9); }
-    100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
