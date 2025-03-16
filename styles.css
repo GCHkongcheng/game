@@ -1,0 +1,206 @@
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f0f0;
+  font-family: Arial, sans-serif;
+}
+
+.game-container {
+  width: 100%;
+  max-width: 400px;
+  height: 700px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.turn-indicator,
+.distance-display {
+  position: absolute;
+  padding: 5px 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.turn-indicator {
+  top: 10px;
+  left: 10px;
+}
+
+.distance-display {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 18px;
+  z-index: 10;
+}
+
+.battle-field {
+  height: 500px;
+  position: relative;
+  background: linear-gradient(to bottom, #e0e0e0, #f5f5f5);
+}
+
+.ai-container,
+.player-container {
+  width: 100px;
+  height: 100px;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ai-container {
+  top: 80px;
+  left: calc(50% - 50px);
+  transform: translateY(-50%);
+}
+.player-container {
+  bottom: 80px;
+  left: calc(50% - 50px);
+  transform: translateY(50%);
+}
+
+.character {
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+  transition: all 0.5s ease;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.ai.character {
+  background-color: #2196f3;
+}
+.player.character {
+  background-color: #f44336;
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.status {
+  width: 40px;
+  height: 20px;
+  background-color: #eee;
+  border-radius: 10px;
+  text-align: center;
+  line-height: 20px;
+  font-size: 12px;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.hp {
+  background-color: #f44336;
+}
+.mp {
+  background-color: #2196f3;
+}
+
+.card-selection {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 20px;
+  display: flex;
+  justify-content: space-around;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-top: 1px solid #eee;
+}
+
+.card {
+  width: 80px;
+  height: 100px;
+  background-color: #f5f5f5;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.card.selected {
+  background-color: #bbdefb;
+  transform: scale(1.05);
+}
+
+.result-display {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  padding: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 20px;
+  display: none;
+}
+
+.card.active-skill {
+  transform: scale(1.1);
+  background-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+}
+
+.result-display {
+  transition: opacity 0.5s ease;
+}
+
+.character {
+  transition: all 0.5s ease;
+}
+
+/* 劈砍动画 */
+.character.attack-slash {
+    animation: slash 0.3s ease;
+}
+
+@keyframes slash {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(15deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* 前冲动画 */
+.character.dash-forward {
+    animation: dash 0.5s ease;
+}
+
+@keyframes dash {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(20px); }
+    100% { transform: translateX(0); }
+}
+
+/* 防守动画 */
+.character.defend {
+    animation: defend 0.5s ease;
+}
+
+@keyframes defend {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
