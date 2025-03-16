@@ -1,17 +1,6 @@
-// 游戏对象声明（提升到最顶部）
 const game = {
-  player: {
-    hp: 10,
-    mp: 50,
-    selectedCard: null,
-    defense: 0,
-  },
-  ai: {
-    hp: 10,
-    mp: 50,
-    selectedCard: null,
-    defense: 0,
-  },
+  player: { hp: 10, mp: 50, selectedCard: null, defense: 0 },
+  ai: { hp: 10, mp: 50, selectedCard: null, defense: 0 },
   distance: 5,
   maxDistance: 10,
   turn: 1,
@@ -35,203 +24,164 @@ const game = {
       mpCost: 1,
       type: "attack",
     },
+    { name: "治疗术", damage: -3, range: 0, move: 0, mpCost: 3, type: "heal" },
+    { name: "后撤", damage: 0, range: 0, move: -2, mpCost: 1, type: "move" },
+    {
+      name: "闪电链",
+      damage: 2,
+      range: 3,
+      move: 0,
+      mpCost: 2,
+      type: "attack",
+      chain: 2,
+    },
+    { name: "冲锋", damage: 1, range: 1, move: 3, mpCost: 3, type: "attack" },
   ],
   playerHand: [],
   aiHand: [],
 };
 
-// 初始化游戏
 function initGame() {
+  game.player = { ...game.player, hp: 10, mp: 50, defense: 0 };
+  game.ai = { ...game.ai, hp: 10, mp: 50, defense: 0 };
+  game.distance = 5;
+  game.turn = 1;
+  document.getElementById("restart-button").style.display = "none";
   drawCards();
   updateUI();
-
-  // // 移除旧的点击事件
-  // document.querySelectorAll(".card").forEach((card) => {
-  //   card.removeEventListener("click", selectCard);
-  // });
-
-  // // 重新绑定事件
-  // document.querySelectorAll(".card").forEach((card) => {
-  //   card.addEventListener("click", selectCard);
-  // });
 }
 
-// 抽取卡牌
 function drawCards() {
-  game.player.defense = 0;
-  game.ai.defense = 0;
-  game.playerHand = [];
-  game.aiHand = [];
-
-  for (let i = 0; i < 3; i++) {
-    game.playerHand.push(
-      game.skills[Math.floor(Math.random() * game.skills.length)]
-    );
-    game.aiHand.push(
-      game.skills[Math.floor(Math.random() * game.skills.length)]
-    );
-  }
-
+  game.playerHand = getUniqueCards(3);
+  game.aiHand = getUniqueCards(3);
   game.player.selectedCard = null;
   game.ai.selectedCard = null;
-
   renderCards();
 }
 
-// 修改renderCards函数，添加事件绑定
+function getUniqueCards(count) {
+  const available = [...game.skills];
+  const selected = [];
+  while (selected.length < count && available.length > 0) {
+    const randomIndex = Math.floor(Math.random() * available.length);
+    selected.push(available.splice(randomIndex, 1)[0]);
+  }
+  return selected;
+}
+
 function renderCards() {
   const cardSelection = document.getElementById("card-selection");
   cardSelection.innerHTML = "";
-
   game.playerHand.forEach((card, index) => {
     const cardElement = document.createElement("div");
     cardElement.className = "card";
-    cardElement.dataset.index = index;
     cardElement.innerHTML = `
-            <div>${card.name}</div>
-            <div>伤害: ${card.damage}</div>
-            <div>范围: ${card.range}</div>
-            <div>蓝耗: ${card.mpCost}</div>
-            ${card.type === "defend" ? `<div>防御: ${card.defense}</div>` : ""}
-            ${card.move !== 0 ? `<div>移动: ${card.move}</div>` : ""}
+            <div class="card-name">${card.name}</div>
+            <div class="card-details">伤害: ${card.damage}</div>
+            <div class="card-details">范围: ${card.range}</div>
+            <div class="card-details">移动: ${card.move}</div>
+            <div class="card-details">蓝量: ${card.mpCost}</div>
         `;
-
-    // 新增事件绑定
-    cardElement.addEventListener("click", selectCard);
-
-    if (game.player.selectedCard === index) {
-      cardElement.classList.add("selected");
-    }
-
+    cardElement.addEventListener("click", () => selectCard(index));
     cardSelection.appendChild(cardElement);
   });
 }
 
-// 选择卡牌（添加安全判断）
-function selectCard(event) {
-  if (!game) return;
-
-  const index = parseInt(event.currentTarget.dataset.index);
-  document
-    .querySelectorAll(".card")
-    .forEach((card) => card.classList.remove("selected"));
+function selectCard(index) {
   game.player.selectedCard = index;
-  event.currentTarget.classList.add("selected");
-
-  if (game.player.selectedCard !== null) {
-    aiSelectCard();
-  }
+  document.querySelectorAll(".card").forEach((card, i) => {
+    card.classList.toggle("selected", i === index);
+    card.style.pointerEvents = "none";
+  });
 }
 
-// AI选择卡牌
-function aiSelectCard() {
-  game.ai.selectedCard = Math.floor(Math.random() * game.aiHand.length);
-
-  if (game.player.selectedCard !== null && game.ai.selectedCard !== null) {
-    resolveBattle();
-  }
+function updateCharacterPositions() {
+  const fieldWidth = document.querySelector(".battle-field").offsetWidth;
+  const baseOffset = 20;
+  const playerX = Math.max(
+    0,
+    Math.min(
+      fieldWidth,
+      (fieldWidth * game.distance) / game.maxDistance - baseOffset
+    )
+  );
+  const aiX = Math.max(
+    0,
+    Math.min(
+      fieldWidth,
+      fieldWidth - (fieldWidth * game.distance) / game.maxDistance - baseOffset
+    )
+  );
+  document.getElementById("player-character").style.left = `${playerX}px`;
+  document.getElementById("ai-character").style.right = `${aiX}px`;
 }
 
-// 结算战斗（添加初始化保护）
-function resolveBattle() {
-  if (!game || !game.player || !game.ai) return;
-
-  const playerCard = game.playerHand[game.player.selectedCard];
-  const aiCard = game.aiHand[game.ai.selectedCard];
-
-  if (game.player.mp < playerCard.mpCost || game.ai.mp < aiCard.mpCost) {
-    alert("蓝量不足，无法使用该技能！");
-    game.player.selectedCard = null;
-    game.ai.selectedCard = null;
-    renderCards();
-    return;
-  }
-
-  executeSkill(game.player, playerCard);
-  executeSkill(game.ai, aiCard);
-
-  updateUI();
-
-  if (game.player.hp <= 0 || game.ai.hp <= 0) {
-    endGame();
-    return;
-  }
-
-  document.getElementById("battle-result").innerHTML = `
-        玩家选择了: ${playerCard.name}<br>
-        AI选择了: ${aiCard.name}
-    `;
-
-  document.getElementById("result-display").style.display = "block";
-
-  setTimeout(() => {
-    game.turn++;
-    document.getElementById("result-display").style.display = "none";
-    drawCards();
-    renderCards();
-    updateUI();
-  }, 1500);
-}
-
-// 执行技能
 function executeSkill(character, card) {
   character.mp -= card.mpCost;
-
-  if (card.type === "attack") {
-    const distance = game.distance;
+  if (card.move !== 0) {
+    const moveValue = character === game.player ? -card.move : card.move;
+    game.distance = Math.min(
+      game.maxDistance,
+      Math.max(0, game.distance + moveValue)
+    );
+  }
+  if (card.type === "attack" && isInRange(card.range)) {
     const target = character === game.player ? game.ai : game.player;
-
-    if (card.range === "infinite" || distance <= card.range) {
-      let finalDamage = card.damage - (target.defense || 0);
-      finalDamage = Math.max(0, finalDamage);
-      target.hp -= finalDamage;
-
-      target.defense = 0;
-
-      // 修改executeSkill函数中的前冲逻辑
-      if (card.name === "前冲") {
-        // 统一计算方式：无论玩家还是AI使用前冲，都缩短距离
-        const newDistance = game.distance - card.move;
-
-        // 玩家使用前冲：确保不小于0
-        if (character === game.player) {
-          game.distance = Math.max(0, newDistance);
-        }
-        // AI使用前冲：确保不大于maxDistance
-        else {
-          game.distance = Math.min(game.maxDistance, newDistance);
-        }
-      }
-
-      // 技能动画
-      const characterElement = document.getElementById(
-        character === game.player ? "player-character" : "ai-character"
-      );
-      if (card.name === "劈砍") {
-        characterElement.classList.add("attack-slash");
-      } else if (card.name === "前冲") {
-        characterElement.classList.add("dash-forward");
-      }
-    }
+    const damage = Math.max(0, card.damage - target.defense);
+    target.hp -= damage;
+    target.defense = 0;
   }
-
+  if (card.type === "heal") {
+    character.hp = Math.min(10, character.hp - card.damage);
+  }
   if (card.type === "defend") {
-    character.defense = card.defense;
-    const characterElement = document.getElementById(
-      character === game.player ? "player-character" : "ai-character"
-    );
-    characterElement.classList.add("defend");
+    character.defense += card.defense;
   }
-
-  setTimeout(() => {
-    const characterElement = document.getElementById(
-      character === game.player ? "player-character" : "ai-character"
-    );
-    characterElement.classList.remove("attack-slash", "dash-forward", "defend");
-  }, 500);
+  playAnimation(character, card.name);
 }
 
-// 更新UI
+function isInRange(range) {
+  if (range === "infinite") return true;
+  return game.distance <= range;
+}
+
+function resolveBattle() {
+  const playerCard = game.playerHand[game.player.selectedCard];
+  if (!playerCard) {
+    alert("请选择一张卡牌！");
+    return;
+  }
+  const validAICards = game.aiHand.filter((card) => game.ai.mp >= card.mpCost);
+  if (validAICards.length > 0) {
+    game.ai.selectedCard = game.aiHand.indexOf(
+      validAICards[Math.floor(Math.random() * validAICards.length)]
+    );
+  } else {
+    game.ai.selectedCard = game.aiHand.indexOf(
+      game.aiHand.reduce((a, b) => (a.mpCost < b.mpCost ? a : b))
+    );
+  }
+  const aiCard = game.aiHand[game.ai.selectedCard];
+  if (game.player.mp < playerCard.mpCost) {
+    alert("蓝量不足！");
+    resetTurn();
+    return;
+  }
+  executeSkill(game.player, playerCard);
+  if (aiCard && game.ai.mp >= aiCard.mpCost) {
+    executeSkill(game.ai, aiCard);
+  }
+  updateUI();
+  if (game.player.hp <= 0 || game.ai.hp <= 0) {
+    endGame();
+  } else {
+    setTimeout(() => {
+      game.turn++;
+      resetTurn();
+    }, 1500);
+  }
+}
+
 function updateUI() {
   document.getElementById("player-hp").textContent = game.player.hp;
   document.getElementById("player-mp").textContent = game.player.mp;
@@ -239,51 +189,72 @@ function updateUI() {
   document.getElementById("ai-mp").textContent = game.ai.mp;
   document.getElementById("distance").textContent = game.distance;
   document.getElementById("turn-number").textContent = game.turn;
-  updateCharacterPositions();
-  // 新增进度条效果
   document.querySelectorAll(".status").forEach((status) => {
+    const value = parseInt(status.textContent.split(": ")[1]);
     if (status.classList.contains("hp")) {
-      const current = parseInt(status.textContent);
-      const max = 10; // 根据实际最大值调整
-      status.style.setProperty("--hp-percent", `${(current / max) * 100}%`);
-    }
-    if (status.classList.contains("mp")) {
-      const current = parseInt(status.textContent);
-      const max = 50;
-      status.style.setProperty("--mp-percent", `${(current / max) * 100}%`);
+      status.style.setProperty("--hp-percent", `${(value / 10) * 100}%`);
+    } else {
+      status.style.setProperty("--mp-percent", `${(value / 50) * 100}%`);
     }
   });
 }
 
-// 更新角色位置（动态计算宽度）
-function updateCharacterPositions() {
-  const battleField = document.querySelector(".battle-field");
-  const fieldWidth = battleField ? battleField.offsetWidth : 300;
-  const maxDistance = game.maxDistance;
-
-  const playerLeft = fieldWidth * (game.distance / maxDistance);
-
-  const playerCharacter = document.getElementById("player-character");
-  const aiCharacter = document.getElementById("ai-character");
-
-  playerCharacter.style.transition = "left 0.5s ease";
-  aiCharacter.style.transition = "left 0.5s ease";
-
-  playerCharacter.style.left = `${playerLeft}px`;
-  aiCharacter.style.left = `${fieldWidth - playerLeft}px`;
-}
-
-// 结束游戏（禁用交互）
 function endGame() {
-  const resultDisplay = document.getElementById("result-display");
-  resultDisplay.style.display = "block";
-  document.querySelectorAll(".card").forEach((card) => {
-    card.style.pointerEvents = "none";
-  });
-
-  resultDisplay.querySelector("#battle-result").textContent =
-    game.player.hp <= 0 ? "游戏结束，你输了！" : "游戏结束，你赢了！";
+  document.getElementById("battle-result").innerHTML = `
+        ${game.player.hp <= 0 ? "你输了！" : "你赢了！"}<br>
+        你的血量: ${game.player.hp}<br>
+        敌方血量: ${game.ai.hp}<br>
+        点击重来
+    `;
+  document.getElementById("restart-button").style.display = "block";
+  document
+    .querySelectorAll(".card")
+    .forEach((card) => (card.style.pointerEvents = "none"));
 }
 
-// 启动游戏
+function resetGame() {
+  document
+    .querySelectorAll(".card")
+    .forEach((card) => (card.style.pointerEvents = "auto"));
+  initGame();
+}
+
+document.getElementById("restart-button").addEventListener("click", resetGame);
+document
+  .getElementById("card-selection")
+  .addEventListener("click", resolveBattle);
 initGame();
+
+function resetTurn() {
+  game.player.selectedCard = null;
+  game.ai.selectedCard = null;
+  document.querySelectorAll(".card").forEach((card) => {
+    card.classList.remove("selected");
+    card.style.pointerEvents = "auto";
+  });
+  drawCards();
+  updateUI();
+}
+
+function playAnimation(character, skillName) {
+  const charElement =
+    character === game.player
+      ? document.getElementById("player-character")
+      : document.getElementById("ai-character");
+  switch (skillName) {
+    case "前冲":
+    case "冲锋":
+      charElement.classList.add("dash-forward");
+      setTimeout(() => charElement.classList.remove("dash-forward"), 500);
+      break;
+    case "劈砍":
+    case "闪电链":
+      charElement.classList.add("attack-slash");
+      setTimeout(() => charElement.classList.remove("attack-slash"), 300);
+      break;
+    case "防守":
+      charElement.classList.add("defend");
+      setTimeout(() => charElement.classList.remove("defend"), 500);
+      break;
+  }
+}

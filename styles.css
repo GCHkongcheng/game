@@ -20,9 +20,11 @@ body {
   overflow: hidden;
 }
 
-.turn-indicator,
-.distance-display {
+.turn-indicator {
   position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   padding: 5px 10px;
   background-color: rgba(0, 0, 0, 0.5);
   color: white;
@@ -30,47 +32,32 @@ body {
   font-size: 14px;
 }
 
-.turn-indicator {
-  top: 10px;
-  left: 10px;
-}
-
-.distance-display {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 18px;
-  z-index: 10;
-}
-
 .battle-field {
   height: 500px;
   position: relative;
   background: linear-gradient(to bottom, #e0e0e0, #f5f5f5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .ai-container,
 .player-container {
   width: 100px;
-  height: 100px;
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.ai-container {
-  top: 80px;
-  left: calc(50% - 50px);
+  top: 50%;
   transform: translateY(-50%);
 }
 
+.ai-container {
+  left: 30%;
+}
+
 .player-container {
-  bottom: 80px;
-  left: calc(50% - 50px);
-  transform: translateY(50%);
+  right: 30%;
 }
 
 .character {
@@ -79,7 +66,7 @@ body {
   border-radius: 5px;
   transition: all 0.5s ease;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  position: relative;
+  position: absolute;
 }
 
 .ai.character {
@@ -106,15 +93,34 @@ body {
   line-height: 20px;
   font-size: 12px;
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-.hp {
+/* .status::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  transition: width 0.3s ease;
+  z-index: -1;
+}
+
+.hp::before {
   background-color: #f44336;
+  width: var(--hp-percent);
 }
 
-.mp {
+.mp::before {
   background-color: #2196f3;
+  width: var(--mp-percent);
 }
+
+.status span {
+  position: relative;
+  z-index: 1;
+} */
 
 .card-selection {
   position: absolute;
@@ -125,6 +131,7 @@ body {
   justify-content: space-around;
   background-color: rgba(255, 255, 255, 0.8);
   border-top: 1px solid #eee;
+  gap: 10px;
 }
 
 .card {
@@ -137,6 +144,8 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  font-size: 12px;
 }
 
 .card:hover {
@@ -161,9 +170,15 @@ body {
   display: none;
 }
 
-/* 劈砍动画 */
-.character.attack-slash {
-  animation: slash 0.3s ease;
+#restart-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: none;
+  background-color: #4caf50;
+  color: white;
+  cursor: pointer;
+  display: none;
 }
 
 @keyframes slash {
@@ -171,16 +186,11 @@ body {
     transform: rotate(0deg);
   }
   50% {
-    transform: rotate(15deg);
+    transform: rotate(7.5deg);
   }
   100% {
     transform: rotate(0deg);
   }
-}
-
-/* 前冲动画 */
-.character.dash-forward {
-  animation: dash 0.5s ease;
 }
 
 @keyframes dash {
@@ -188,16 +198,11 @@ body {
     transform: translateX(0);
   }
   50% {
-    transform: translateX(20px);
+    transform: translateX(10px);
   }
   100% {
     transform: translateX(0);
   }
-}
-
-/* 防守动画 */
-.character.defend {
-  animation: defend 0.5s ease;
 }
 
 @keyframes defend {
@@ -210,4 +215,26 @@ body {
   100% {
     transform: scale(1);
   }
+}
+
+.attack-slash {
+  animation: slash 0.3s ease;
+}
+.dash-forward {
+  animation: dash 0.5s ease;
+}
+.defend {
+  animation: defend 0.5s ease;
+}
+
+.ai-status {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.player-status {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }

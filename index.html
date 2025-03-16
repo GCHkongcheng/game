@@ -12,23 +12,24 @@
       <div class="battle-field">
         <div class="distance-display">距离: <span id="distance">5</span></div>
         <div class="ai-container">
-          <div class="status-bar">
-            <div class="status hp">血量: <span id="ai-hp">10</span></div>
-            <div class="status mp">蓝量: <span id="ai-mp">50</span></div>
-          </div>
           <div class="character ai" id="ai-character"></div>
         </div>
         <div class="player-container">
           <div class="character player" id="player-character"></div>
-          <div class="status-bar">
-            <div class="status hp">血量: <span id="player-hp">10</span></div>
-            <div class="status mp">蓝量: <span id="player-mp">50</span></div>
-          </div>
         </div>
+      </div>
+      <div class="status-bar ai-status">
+        <div class="status hp">血量: <span id="ai-hp">10</span></div>
+        <div class="status mp">蓝量: <span id="ai-mp">50</span></div>
+      </div>
+      <div class="status-bar player-status">
+        <div class="status hp">血量: <span id="player-hp">10</span></div>
+        <div class="status mp">蓝量: <span id="player-mp">50</span></div>
       </div>
       <div class="card-selection" id="card-selection"></div>
       <div class="result-display" id="result-display">
         <div id="battle-result"></div>
+        <button id="restart-button" onclick="resetGame()">重新开始</button>
       </div>
     </div>
     <script src="script.js"></script>
