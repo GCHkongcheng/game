@@ -383,11 +383,18 @@
         const maxGap = areaWidth * 0.8; // 最大间隔为战斗区域的80%
 
         // 计算间隔距离
+        const currentDistance = gameState.distance; // 使用临时变量
         const gap = (gameState.distance / gameState.maxDistance) * maxGap;
 
         // 更新角色位置
         player.style.left = `${(areaWidth - gap) / 2 - 25}px`; // 25是角色宽度的一半
         ai.style.left = `${(areaWidth + gap) / 2 - 25}px`;
+
+        // 更新距离显示元素
+        const distanceElement = document.getElementById("distance");
+        if (distanceElement) {
+          distanceElement.textContent = currentDistance;
+        }
       }
 
       // 确保技能卡牌描述正确
