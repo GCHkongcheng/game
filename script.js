@@ -12,6 +12,7 @@ class Character {
     this.mana = MAX_MANA;
     this.maxHealth = MAX_HEALTH;
     this.maxMana = MAX_MANA;
+    this.frozen = false; // 添加冻结状态
   }
 
   takeDamage(amount) {
@@ -32,9 +33,9 @@ class Character {
   }
 }
 
-// 技能卡牌类 - 正确修复移动逻辑
+// 技能卡牌类 - 增加卡牌类型
 class SkillCard {
-  constructor(id, name, damage, range, movement, manaCost, description) {
+  constructor(id, name, damage, range, movement, manaCost, description, type) {
     this.id = id;
     this.name = name;
     this.damage = damage;
@@ -42,13 +43,26 @@ class SkillCard {
     this.movement = movement; // 正值表示后退，负值表示前进
     this.manaCost = manaCost;
     this.description = description;
+    this.type = type || this.determineType(damage, movement); // 卡牌类型：attack, move, support
+  }
+
+  determineType(damage, movement) {
+    if (damage > 0) return "attack";
+    if (movement !== 0) return "move";
+    return "support";
   }
 
   canUse(character, distance) {
-    return character.mana >= this.manaCost;
+    return character.mana >= this.manaCost && !character.frozen;
   }
 
   use(user, target, gameState) {
+    if (user.frozen) {
+      logMessage(`${user.isPlayer ? "玩家" : "AI"}被冻结，无法行动`);
+      user.frozen = false; // 解除冻结状态
+      return false;
+    }
+
     if (!user.useMana(this.manaCost)) {
       logMessage(
         `${user.isPlayer ? "玩家" : "AI"}没有足够的蓝量使用${this.name}`
@@ -56,19 +70,9 @@ class SkillCard {
       return false;
     }
 
-    // 应用移动效果 - 修复移动逻辑
+    // 应用移动效果
     if (this.movement !== 0) {
-      // 正确处理移动：
-      // 正值(如+2)表示后退，增加距离
-      // 负值(如-2)表示前进，减少距离
       let movementEffect = this.movement;
-
-      // 如果是AI，则反转移动方向效果
-      //   if (!user.isPlayer) {
-      //     movementEffect = -movementEffect;
-      //   }
-
-      // 计算新距离
       let newDistance = gameState.distance + movementEffect;
 
       // 检查是否超出边界
@@ -76,7 +80,12 @@ class SkillCard {
         // 实现穿越逻辑 - 出现在对方身后
         logMessage(`${user.isPlayer ? "玩家" : "AI"}穿越到了对方身后!`);
         newDistance = 0;
-        // 这里可以添加额外效果或优势
+        // 穿越造成额外伤害
+        if (this.damage > 0) {
+          const extraDamage = 1;
+          target.takeDamage(extraDamage);
+          logMessage(`穿越攻击造成额外${extraDamage}点伤害!`);
+        }
       } else if (newDistance > gameState.maxDistance) {
         newDistance = gameState.maxDistance;
         logMessage(`${user.isPlayer ? "玩家" : "AI"}已经退到了边界!`);
@@ -131,6 +140,12 @@ class SkillCard {
       );
     }
 
+    // 处理冰冻效果
+    if (this.name === "冰冻") {
+      target.frozen = true;
+      logMessage(`${user.isPlayer ? "玩家" : "AI"}冻结了对手一回合`);
+    }
+
     return false;
   }
 }
@@ -163,13 +178,13 @@ function updateCharacterPositions(gameState) {
 
 // 确保技能卡牌描述正确
 const allSkillCards = [
-  new SkillCard(1, "前冲", 2, 2, -2, 2, "向前移动2格(减少距离)并造成2点伤害"),
-  new SkillCard(2, "防守", 0, 0, 0, 1, "抵挡小于2点的伤害"),
-  new SkillCard(3, "劈砍", 3, 2, 0, 2, "造成3点伤害"),
-  new SkillCard(4, "魔法球", 1, 10, 0, 1, "远程造成1点伤害"),
-  new SkillCard(5, "后退", 0, 0, 2, 1, "后退2格(增加距离)"),
-  new SkillCard(6, "冲锋", 4, 1, -3, 3, "向前冲锋3格(减少距离)并造成4点伤害"),
-  new SkillCard(7, "治疗", -2, 0, 0, 3, "恢复2点生命"),
+  new SkillCard(1, "前冲", 2, 2, -2, 2, "向前移动2格(减少距离)并造成2点伤害", "attack"),
+  new SkillCard(2, "防守", 0, 0, 0, 1, "抵挡小于2点的伤害", "support"),
+  new SkillCard(3, "劈砍", 3, 2, 0, 2, "造成3点伤害", "attack"),
+  new SkillCard(4, "魔法球", 1, 10, 0, 1, "远程造成1点伤害", "attack"),
+  new SkillCard(5, "后退", 0, 0, 2, 1, "后退2格(增加距离)", "move"),
+  new SkillCard(6, "冲锋", 4, 1, -3, 3, "向前冲锋3格(减少距离)并造成4点伤害", "attack"),
+  new SkillCard(7, "治疗", -2, 0, 0, 3, "恢复2点生命", "support"),
   new SkillCard(
     8,
     "远程射击",
@@ -177,12 +192,13 @@ const allSkillCards = [
     8,
     1,
     2,
-    "后退1格(增加距离)并造成2点远程伤害"
+    "后退1格(增加距离)并造成2点远程伤害",
+    "attack"
   ),
-  new SkillCard(9, "魔力恢复", 0, 0, 0, 0, "恢复2点蓝量"),
-  new SkillCard(10, "闪避", 0, 0, 3, 2, "快速后退3格(增加距离)"),
-  new SkillCard(11, "炸弹", 4, 1, 0, 3, "造成5点伤害"),
-  new SkillCard(12, "冰冻", 0, 0, 0, 4, "冻结对手1回合"),
+  new SkillCard(9, "魔力恢复", 0, 0, 0, 0, "恢复2点蓝量", "support"),
+  new SkillCard(10, "闪避", 0, 0, 3, 2, "快速后退3格(增加距离)", "move"),
+  new SkillCard(11, "炸弹", 5, 1, 0, 3, "造成5点伤害", "attack"),
+  new SkillCard(12, "冰冻", 0, 0, 0, 4, "冻结对手1回合", "support"),
 ];
 
 // 修改游戏状态初始化
@@ -216,6 +232,10 @@ const effectAnimation = document.getElementById("effect-animation");
 const gameOverElement = document.getElementById("game-over");
 const gameResultElement = document.getElementById("game-result");
 const restartButton = document.getElementById("restart-button");
+const roundNumberElement = document.getElementById("round-number");
+const helpButton = document.getElementById("help-button");
+const helpModal = document.getElementById("help-modal");
+const closeButton = document.querySelector(".close-button");
 
 // 日志函数
 function logMessage(message) {
@@ -232,6 +252,7 @@ function updateUI() {
   aiHealthElement.textContent = gameState.ai.health;
   aiManaElement.textContent = gameState.ai.mana;
   distanceElement.textContent = gameState.distance;
+  roundNumberElement.textContent = gameState.round;
 
   playerHealthBar.style.width = `${
     (gameState.player.health / gameState.player.maxHealth) * 100
@@ -245,6 +266,19 @@ function updateUI() {
   aiManaBar.style.width = `${
     (gameState.ai.mana / gameState.ai.maxMana) * 100
   }%`;
+  
+  // 更新冻结状态显示
+  if (gameState.player.frozen) {
+    document.querySelector(".player").style.opacity = "0.5";
+  } else {
+    document.querySelector(".player").style.opacity = "1";
+  }
+  
+  if (gameState.ai.frozen) {
+    document.querySelector(".ai").style.opacity = "0.5";
+  } else {
+    document.querySelector(".ai").style.opacity = "1";
+  }
 }
 
 // 从牌组中随机抽取卡牌
@@ -263,7 +297,7 @@ function drawRandomCards(count) {
   return drawnCards;
 }
 
-// 创建卡牌元素 - 修复版本
+// 创建卡牌元素 - 优化版本
 function createCardElements(cards) {
   // 确保卡牌容器存在
   if (!cardContainer) {
@@ -279,9 +313,6 @@ function createCardElements(cards) {
     console.error("No cards to display!");
     return;
   }
-
-  // 添加调试信息
-  console.log("Creating cards:", cards);
 
   // 为每张卡牌创建DOM元素
   cards.forEach((card) => {
@@ -299,16 +330,37 @@ function createCardElements(cards) {
 
     const statsElement = document.createElement("div");
     statsElement.className = "card-stats";
-    statsElement.innerHTML = `
-            <span>伤害: ${card.damage}</span>
-            <span>范围: ${card.range}</span>
-            <span>消耗: ${card.manaCost}</span>
-        `;
+    
+    // 根据卡牌类型显示不同的统计信息
+    if (card.type === "attack") {
+      statsElement.innerHTML = `
+        <span>伤害: ${card.damage}</span>
+        <span>范围: ${card.range}</span>
+        <span>消耗: ${card.manaCost}</span>
+      `;
+    } else if (card.type === "move") {
+      statsElement.innerHTML = `
+        <span>移动: ${card.movement > 0 ? "后退" + card.movement : "前进" + Math.abs(card.movement)}</span>
+        <span>消耗: ${card.manaCost}</span>
+      `;
+    } else {
+      statsElement.innerHTML = `
+        <span>${card.damage < 0 ? "治疗: " + (-card.damage) : ""}</span>
+        <span>消耗: ${card.manaCost}</span>
+      `;
+    }
+
+    // 添加卡牌类型标识
+    const typeElement = document.createElement("div");
+    typeElement.className = `card-type card-type-${card.type}`;
+    typeElement.textContent = card.type === "attack" ? "攻击" : 
+                             (card.type === "move" ? "移动" : "辅助");
 
     // 添加所有元素到卡牌
     cardElement.appendChild(titleElement);
     cardElement.appendChild(descriptionElement);
     cardElement.appendChild(statsElement);
+    cardElement.appendChild(typeElement);
 
     // 添加点击事件
     cardElement.addEventListener("click", () => selectCard(card.id));
@@ -338,279 +390,408 @@ function selectCard(cardId) {
   confirmButton.disabled = false;
 }
 
-// AI选择卡牌
+// AI选择卡牌 - 优化AI策略
 function aiSelectCard(availableCards) {
-  // 简单AI策略: 根据当前距离选择最合适的卡牌
   const distance = gameState.distance;
+  const aiHealth = gameState.ai.health;
+  const playerHealth = gameState.player.health;
+  const aiMana = gameState.ai.mana;
 
-  // 如果距离很近，优先选择高伤害技能
-  if (distance <= 2) {
-    const attackCards = availableCards.filter(
-      (card) => card.damage > 0 && card.range >= distance
-    );
-    if (attackCards.length > 0) {
-      return attackCards.sort((a, b) => b.damage - a.damage)[0].id;
+  // 如果AI被冻结，随机选择一张卡
+  if (gameState.ai.frozen) {
+    return availableCards[Math.floor(Math.random() * availableCards.length)].id;
+  }
+
+  // 如果AI血量很低，优先选择治疗卡牌
+  if (aiHealth <= 3) {
+    const healCards = availableCards.filter(card => card.damage < 0);
+    if (healCards.length > 0) {
+      return healCards[0].id;
     }
   }
 
-  // 如果距离很远，优先选择远程攻击或者靠近敌人的技能
-  if (distance > 2) {
-    const rangeCards = availableCards.filter(
-      (card) => card.damage > 0 && card.range >= distance
-    );
-    if (rangeCards.length > 0) {
-      return rangeCards[0].id;
+    // 如果玩家血量很低，优先选择能造成伤害的卡
+    if (playerHealth <= 3) {
+      const damageCards = availableCards.filter(
+        card => card.damage > 0 && card.range >= distance
+      );
+      if (damageCards.length > 0) {
+        return damageCards.sort((a, b) => b.damage - a.damage)[0].id;
+      }
     }
-
-    const moveCards = availableCards.filter((card) => card.movement < 0);
-    if (moveCards.length > 0) {
-      return moveCards[0].id;
-    }
-  }
-
-  // 随机选择一张卡牌
-  return availableCards[Math.floor(Math.random() * availableCards.length)].id;
-}
-
-// 显示技能释放效果
-function showSkillEffect(isPlayer, skillName) {
-  effectAnimation.innerHTML = "";
-
-  const effect = document.createElement("div");
-  effect.style.position = "absolute";
-  effect.style.textAlign = "center";
-  effect.style.fontSize = "24px";
-  effect.style.fontWeight = "bold";
-  effect.style.color = "white";
-  effect.style.textShadow = "0 0 10px black";
-
-  if (isPlayer) {
-    effect.style.left = "30%";
-    effect.style.top = "50%";
-    effect.style.animation = "moveRight 1s forwards";
-  } else {
-    effect.style.right = "30%";
-    effect.style.top = "50%";
-    effect.style.animation = "moveLeft 1s forwards";
-  }
-
-  effect.textContent = skillName + "!";
-
-  effectAnimation.appendChild(effect);
-
-  // 添加一个样式来创建动画
-  const style = document.createElement("style");
-  style.textContent = `
-        @keyframes moveRight {
-            0% { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(100px); opacity: 0; }
+  
+    // 如果距离很近，优先选择高伤害技能或后退
+    if (distance <= 2) {
+      // 有50%的概率选择攻击，50%的概率选择后退
+      if (Math.random() < 0.5) {
+        const attackCards = availableCards.filter(
+          card => card.damage > 0 && card.range >= distance
+        );
+        if (attackCards.length > 0) {
+          return attackCards.sort((a, b) => b.damage - a.damage)[0].id;
         }
-        @keyframes moveLeft {
-            0% { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(-100px); opacity: 0; }
+      } else {
+        const retreatCards = availableCards.filter(card => card.movement > 0);
+        if (retreatCards.length > 0) {
+          return retreatCards.sort((a, b) => b.movement - a.movement)[0].id;
         }
-    `;
-  document.head.appendChild(style);
-
-  // 一段时间后移除效果
-  setTimeout(() => {
+      }
+    }
+  
+    // 如果距离很远，优先选择前进或远程攻击
+    if (distance > 5) {
+      // 有60%的概率选择前进，40%的概率选择远程攻击
+      if (Math.random() < 0.6) {
+        const advanceCards = availableCards.filter(card => card.movement < 0);
+        if (advanceCards.length > 0) {
+          return advanceCards.sort((a, b) => a.movement - b.movement)[0].id;
+        }
+      } else {
+        const rangeCards = availableCards.filter(
+          card => card.damage > 0 && card.range >= distance
+        );
+        if (rangeCards.length > 0) {
+          return rangeCards[0].id;
+        }
+      }
+    }
+  
+    // 如果蓝量低，优先选择恢复蓝量的卡牌
+    if (aiMana <= 2) {
+      const manaCards = availableCards.filter(card => card.manaCost === 0);
+      if (manaCards.length > 0) {
+        return manaCards[0].id;
+      }
+    }
+  
+    // 如果玩家血量高于AI，考虑使用冰冻
+    if (playerHealth > aiHealth && aiMana >= 4) {
+      const freezeCards = availableCards.filter(card => card.name === "冰冻");
+      if (freezeCards.length > 0) {
+        return freezeCards[0].id;
+      }
+    }
+  
+    // 随机选择一张卡牌
+    return availableCards[Math.floor(Math.random() * availableCards.length)].id;
+  }
+  
+  // 显示技能释放效果
+  function showSkillEffect(isPlayer, skillName) {
     effectAnimation.innerHTML = "";
-    document.head.removeChild(style);
-  }, 1000);
-}
-
-// 执行回合时更新角色位置
-function executeRound() {
-  gameState.waitingForSelection = false;
-
-  const playerSelectedCard = allSkillCards.find(
-    (card) => card.id == gameState.playerCard
-  );
-  const aiSelectedCard = allSkillCards.find(
-    (card) => card.id == gameState.aiCard
-  );
-
-  logMessage(`回合${gameState.round}开始`);
-  logMessage(
-    `玩家选择了【${playerSelectedCard.name}】，AI选择了【${aiSelectedCard.name}】`
-  );
-
-  showSkillEffect(true, playerSelectedCard.name);
-
-  const aiDefeated = playerSelectedCard.use(
-    gameState.player,
-    gameState.ai,
-    gameState
-  );
-
-  updateUI();
-
-  if (aiDefeated) {
-    endGame(true);
-    return;
+  
+    const effect = document.createElement("div");
+    effect.style.position = "absolute";
+    effect.style.textAlign = "center";
+    effect.style.fontSize = "24px";
+    effect.style.fontWeight = "bold";
+    effect.style.color = "white";
+    effect.style.textShadow = "0 0 10px black";
+  
+    if (isPlayer) {
+      effect.style.left = "30%";
+      effect.style.top = "50%";
+      effect.style.animation = "moveRight 1s forwards";
+    } else {
+      effect.style.right = "30%";
+      effect.style.top = "50%";
+      effect.style.animation = "moveLeft 1s forwards";
+    }
+  
+    effect.textContent = skillName + "!";
+  
+    effectAnimation.appendChild(effect);
+  
+    // 添加一个样式来创建动画
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes moveRight {
+        0% { transform: translateX(0) scale(1); opacity: 1; }
+        100% { transform: translateX(100px) scale(1.5); opacity: 0; }
+      }
+      @keyframes moveLeft {
+        0% { transform: translateX(0) scale(1); opacity: 1; }
+        100% { transform: translateX(-100px) scale(1.5); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  
+    // 一段时间后移除效果
+    setTimeout(() => {
+      effectAnimation.innerHTML = "";
+      document.head.removeChild(style);
+    }, 1000);
   }
-
-  setTimeout(() => {
-    showSkillEffect(false, aiSelectedCard.name);
-
-    const playerDefeated = aiSelectedCard.use(
-      gameState.ai,
+  
+  // 执行回合时更新角色位置
+  function executeRound() {
+    gameState.waitingForSelection = false;
+  
+    const playerSelectedCard = allSkillCards.find(
+      (card) => card.id == gameState.playerCard
+    );
+    const aiSelectedCard = allSkillCards.find(
+      (card) => card.id == gameState.aiCard
+    );
+  
+    logMessage(`回合${gameState.round}开始`);
+    logMessage(
+      `玩家选择了【${playerSelectedCard.name}】，AI选择了【${aiSelectedCard.name}】`
+    );
+  
+    // 添加卡牌使用动画效果
+    const playerCardElement = document.querySelector(`.card[data-card-id="${gameState.playerCard}"]`);
+    if (playerCardElement) {
+      playerCardElement.classList.add("card-used");
+      setTimeout(() => {
+        playerCardElement.classList.remove("card-used");
+      }, 500);
+    }
+  
+    showSkillEffect(true, playerSelectedCard.name);
+  
+    const aiDefeated = playerSelectedCard.use(
       gameState.player,
+      gameState.ai,
       gameState
     );
-
+  
     updateUI();
-
-    if (playerDefeated) {
-      endGame(false);
+  
+    if (aiDefeated) {
+      endGame(true);
       return;
     }
-
-    startNextRound();
-  }, 1500);
-}
-
-/// 开始下一回合 - 修复版本
-function startNextRound() {
-  gameState.round++;
-  gameState.waitingForSelection = true;
-  gameState.playerCard = null;
-  gameState.aiCard = null;
-
-  // 回合开始时恢复一些蓝量
-  gameState.player.restoreMana(1);
-  gameState.ai.restoreMana(1);
-
-  logMessage(`回合${gameState.round}开始，双方恢复1点蓝量`);
-
-  // 抽取新的卡牌
-  gameState.playerCards = drawRandomCards(CARDS_PER_ROUND);
-
-  // 确保抽到了卡牌
-  if (gameState.playerCards.length === 0) {
-    console.error("Failed to draw cards!");
-    gameState.playerCards = [...allSkillCards].slice(0, CARDS_PER_ROUND);
+  
+    setTimeout(() => {
+      showSkillEffect(false, aiSelectedCard.name);
+  
+      const playerDefeated = aiSelectedCard.use(
+        gameState.ai,
+        gameState.player,
+        gameState
+      );
+  
+      updateUI();
+  
+      if (playerDefeated) {
+        endGame(false);
+        return;
+      }
+  
+      startNextRound();
+    }, 1500);
   }
-
-  console.log("Drew cards for new round:", gameState.playerCards);
-
-  // 创建卡牌元素
-  createCardElements(gameState.playerCards);
-
-  // 重置确认按钮
-  confirmButton.disabled = true;
-
-  // 更新UI
-  updateUI();
-}
-// 结束游戏
-function endGame(playerWon) {
-  gameState.gameOver = true;
-
-  gameResultElement.textContent = playerWon ? "你赢了!" : "你输了!";
-  gameOverElement.style.display = "flex";
-
-  logMessage(playerWon ? "游戏结束，玩家获胜!" : "游戏结束，AI获胜!");
-}
-
-// 确保重新开始游戏时也重置角色位置
-function restartGame() {
-  // 重置游戏状态
-  gameState.player = new Character(true);
-  gameState.ai = new Character(false);
-  gameState.distance = INITIAL_DISTANCE;
-  gameState.round = 1;
-  gameState.playerCard = null;
-  gameState.aiCard = null;
-  gameState.waitingForSelection = true;
-  gameState.gameOver = false;
-
-  // 清空日志
-  gameLogElement.innerHTML = "";
-
-  // 隐藏游戏结束界面
-  gameOverElement.style.display = "none";
-
-  // 抽取新的卡牌
-  gameState.playerCards = drawRandomCards(CARDS_PER_ROUND);
-  createCardElements(gameState.playerCards);
-
-  // 重置确认按钮
-  confirmButton.disabled = true;
-
-  // 更新UI
-  updateUI();
-  updateCharacterPositions(gameState);
-
-  logMessage("新的游戏开始了!");
-}
-
-// 确认按钮点击事件
-confirmButton.addEventListener("click", () => {
-  if (!gameState.playerCard || !gameState.waitingForSelection) return;
-
-  // AI选择卡牌
-  gameState.aiCard = aiSelectCard(drawRandomCards(CARDS_PER_ROUND));
-
-  // 执行回合
-  executeRound();
-});
-
-// 重新开始按钮点击事件
-restartButton.addEventListener("click", restartGame);
-
-// 修改初始化函数，添加角色定位
-function initGame() {
-  console.log("Initializing game...");
-
-  if (!cardContainer) {
-    console.error("Card container not found during initialization!");
-    return;
+  
+  // 开始下一回合 - 优化版本
+  function startNextRound() {
+    gameState.round++;
+    gameState.waitingForSelection = true;
+    gameState.playerCard = null;
+    gameState.aiCard = null;
+  
+    // 回合开始时恢复一些蓝量
+    gameState.player.restoreMana(1);
+    gameState.ai.restoreMana(1);
+  
+    logMessage(`回合${gameState.round}开始，双方恢复1点蓝量`);
+  
+    // 抽取新的卡牌
+    gameState.playerCards = drawRandomCards(CARDS_PER_ROUND);
+  
+    // 确保抽到了卡牌
+    if (gameState.playerCards.length === 0) {
+      console.error("Failed to draw cards!");
+      gameState.playerCards = [...allSkillCards].slice(0, CARDS_PER_ROUND);
+    }
+  
+    // 创建卡牌元素
+    createCardElements(gameState.playerCards);
+  
+    // 重置确认按钮
+    confirmButton.disabled = true;
+  
+    // 更新UI
+    updateUI();
   }
-
-  // 初始化UI
-  updateUI();
-
-  // 设置角色初始位置样式
-  const player = document.querySelector(".player");
-  const ai = document.querySelector(".ai");
-  if (player && ai) {
-    player.style.position = "absolute";
-    ai.style.position = "absolute";
+  
+  // 结束游戏
+  function endGame(playerWon) {
+    gameState.gameOver = true;
+  
+    gameResultElement.textContent = playerWon ? "你赢了!" : "你输了!";
+    gameOverElement.style.display = "flex";
+  
+    // 添加胜利/失败动画效果
+    const resultAnimation = document.createElement("div");
+    resultAnimation.className = "result-animation";
+    resultAnimation.textContent = playerWon ? "胜利!" : "失败!";
+    resultAnimation.style.color = playerWon ? "gold" : "red";
+    gameOverElement.insertBefore(resultAnimation, gameResultElement);
+  
+    logMessage(playerWon ? "游戏结束，玩家获胜!" : "游戏结束，AI获胜!");
   }
-
-  // 初始设置角色位置
-  updateCharacterPositions(gameState);
-
-  if (!allSkillCards || allSkillCards.length === 0) {
-    console.error("No skill cards defined!");
-    return;
+  
+  // 确保重新开始游戏时也重置角色位置
+  function restartGame() {
+    // 移除可能存在的结果动画
+    const resultAnimation = document.querySelector(".result-animation");
+    if (resultAnimation) {
+      resultAnimation.remove();
+    }
+  
+    // 重置游戏状态
+    gameState.player = new Character(true);
+    gameState.ai = new Character(false);
+    gameState.distance = INITIAL_DISTANCE;
+    gameState.round = 1;
+    gameState.playerCard = null;
+    gameState.aiCard = null;
+    gameState.waitingForSelection = true;
+    gameState.gameOver = false;
+  
+    // 清空日志
+    gameLogElement.innerHTML = "";
+  
+    // 隐藏游戏结束界面
+    gameOverElement.style.display = "none";
+  
+    // 抽取新的卡牌
+    gameState.playerCards = drawRandomCards(CARDS_PER_ROUND);
+    createCardElements(gameState.playerCards);
+  
+    // 重置确认按钮
+    confirmButton.disabled = true;
+  
+    // 更新UI
+    updateUI();
+    updateCharacterPositions(gameState);
+  
+    logMessage("新的游戏开始了!");
   }
-
-  console.log("Starting first round...");
-
-  gameState.playerCards = drawRandomCards(CARDS_PER_ROUND);
-  console.log("Initial cards:", gameState.playerCards);
-  createCardElements(gameState.playerCards);
-
-  logMessage("游戏开始!");
-}
-
-// 确保页面加载完成后再初始化游戏
-document.addEventListener("DOMContentLoaded", function () {
-  console.log("DOM fully loaded");
-  initGame();
-});
-
-// 添加立即执行的初始化
-(function () {
-  console.log("Immediate initialization check");
-  // 如果文档已经加载完成，立即初始化
-  if (
-    document.readyState === "complete" ||
-    document.readyState === "interactive"
-  ) {
-    console.log("Document already ready, initializing game immediately");
-    setTimeout(initGame, 100); // 稍微延迟以确保所有DOM元素都已加载
+  
+  // 显示帮助模态框
+  function showHelpModal() {
+    helpModal.style.display = "block";
   }
-})();
+  
+  // 关闭帮助模态框
+  function closeHelpModal() {
+    helpModal.style.display = "none";
+  }
+  
+  // 确认按钮点击事件
+  confirmButton.addEventListener("click", () => {
+    if (!gameState.playerCard || !gameState.waitingForSelection) return;
+  
+    // AI选择卡牌
+    gameState.aiCard = aiSelectCard(drawRandomCards(CARDS_PER_ROUND));
+  
+    // 执行回合
+    executeRound();
+  });
+  
+  // 重新开始按钮点击事件
+  restartButton.addEventListener("click", restartGame);
+  
+  // 帮助按钮点击事件
+  helpButton.addEventListener("click", showHelpModal);
+  
+  // 关闭按钮点击事件
+  closeButton.addEventListener("click", closeHelpModal);
+  
+  // 点击模态框外部关闭
+  window.addEventListener("click", (event) => {
+    if (event.target === helpModal) {
+      closeHelpModal();
+    }
+  });
+  
+  // 键盘快捷键
+  document.addEventListener("keydown", (event) => {
+    // ESC键关闭帮助模态框
+    if (event.key === "Escape") {
+      closeHelpModal();
+    }
+    
+    // 数字键1-3快速选择卡牌
+    if (gameState.waitingForSelection && !gameState.gameOver) {
+      if (event.key >= "1" && event.key <= "3") {
+        const cardIndex = parseInt(event.key) - 1;
+        if (gameState.playerCards[cardIndex]) {
+          selectCard(gameState.playerCards[cardIndex].id);
+        }
+      }
+      
+      // 回车键确认选择
+      if (event.key === "Enter" && !confirmButton.disabled) {
+        confirmButton.click();
+      }
+    }
+    
+    // R键重新开始游戏
+    if (event.key === "r" && gameState.gameOver) {
+      restartGame();
+    }
+  });
+  
+  // 修改初始化函数，添加角色定位
+  function initGame() {
+    console.log("Initializing game...");
+  
+    if (!cardContainer) {
+      console.error("Card container not found during initialization!");
+      return;
+    }
+  
+    // 初始化UI
+    updateUI();
+  
+    // 设置角色初始位置样式
+    const player = document.querySelector(".player");
+    const ai = document.querySelector(".ai");
+    if (player && ai) {
+      player.style.position = "absolute";
+      ai.style.position = "absolute";
+    }
+  
+    // 初始设置角色位置
+    updateCharacterPositions(gameState);
+  
+    if (!allSkillCards || allSkillCards.length === 0) {
+      console.error("No skill cards defined!");
+      return;
+    }
+  
+    console.log("Starting first round...");
+  
+    gameState.playerCards = drawRandomCards(CARDS_PER_ROUND);
+    console.log("Initial cards:", gameState.playerCards);
+    createCardElements(gameState.playerCards);
+  
+    logMessage("游戏开始!");
+  }
+  
+  // 确保页面加载完成后再初始化游戏
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("DOM fully loaded");
+    initGame();
+  });
+  
+  // 添加立即执行的初始化
+  (function () {
+    console.log("Immediate initialization check");
+    // 如果文档已经加载完成，立即初始化
+    if (
+      document.readyState === "complete" ||
+      document.readyState === "interactive"
+    ) {
+      console.log("Document already ready, initializing game immediately");
+      setTimeout(initGame, 100); // 稍微延迟以确保所有DOM元素都已加载
+    }
+  })();
+  
+  // 添加窗口大小变化时重新计算角色位置
+  window.addEventListener("resize", () => {
+    updateCharacterPositions(gameState);
+  });

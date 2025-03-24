@@ -8,11 +8,17 @@
   </head>
   <body>
     <div class="game-container">
+      <div class="game-header">
+        <h1>卡牌对战游戏</h1>
+        <div class="round-indicator">回合: <span id="round-number">1</span></div>
+        <button id="help-button" class="help-button">游戏说明</button>
+      </div>
+      
       <div class="battle-area">
         <div class="player">
           <div class="stats">
-            <div>血量: <span id="player-health">10</span></div>
-            <div>蓝量: <span id="player-mana">10</span></div>
+            <div class="stat-text">血量: <span id="player-health" class="stat-value">10</span></div>
+            <div class="stat-text">蓝量: <span id="player-mana" class="stat-value">10</span></div>
             <div class="status-bar">
               <div id="player-health-bar" class="health-bar"></div>
             </div>
@@ -24,8 +30,8 @@
         <div class="distance-display">距离: <span id="distance">5</span></div>
         <div class="ai">
           <div class="stats">
-            <div>血量: <span id="ai-health">10</span></div>
-            <div>蓝量: <span id="ai-mana">10</span></div>
+            <div class="stat-text">血量: <span id="ai-health" class="stat-value">10</span></div>
+            <div class="stat-text">蓝量: <span id="ai-mana" class="stat-value">10</span></div>
             <div class="status-bar">
               <div id="ai-health-bar" class="health-bar"></div>
             </div>
@@ -51,6 +57,21 @@
       <div class="game-over" id="game-over">
         <div id="game-result"></div>
         <button class="restart-button" id="restart-button">重新开始</button>
+      </div>
+      
+      <div id="help-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button">&times;</span>
+          <h2>游戏说明</h2>
+          <p>这是一个回合制卡牌对战游戏，你需要通过选择合适的卡牌来击败对手。</p>
+          <ul>
+            <li>每回合你可以从3张卡牌中选择1张使用</li>
+            <li>距离影响攻击是否能命中，注意卡牌的攻击范围</li>
+            <li>前进减少距离，后退增加距离</li>
+            <li>每回合开始时恢复1点蓝量</li>
+            <li>率先将对方血量降为0的一方获胜</li>
+          </ul>
+        </div>
       </div>
     </div>
 
